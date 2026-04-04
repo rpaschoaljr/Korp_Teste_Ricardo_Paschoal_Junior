@@ -1,0 +1,132 @@
+<div class="faturamento-container">
+  <h1>GESTÃO DE FATURAMENTO</h1>
+
+  <!-- Formulário de Nova Fatura -->
+  <section class="invoice-form">
+    <h2>ABRIR NOVA NOTA FISCAL</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="cliente">CLIENTE:</label>
+        <select id="cliente" [(ngModel)]="selectedClientId" (change)="onClientChange()" [disabled]="hasClientError">
+          <option [ngValue]="null">{{ hasClientError ? 'SERVIÇO DE CLIENTES INDISPONÍVEL' : 'SELECIONE UM CLIENTE' }}</option>
+          <option *ngFor="let c of clients" [ngValue]="c.id">{{ c.nome }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Painel de Detalhes do Cliente -->
+    <div class="client-details-box" *ngIf="selectedClient">
+      <p><strong>DOCUMENTO:</strong> {{ selectedClient.cpf ? 'CPF: ' + selectedClient.cpf : 'CNPJ: ' + selectedClient.cnpj }}</p>
+      <p><strong>ENDEREÇO:</strong> {{ selectedClient.endereco }}</p>
+      <p><strong>CONTATO:</strong> {{ selectedClient.telefone }}</p>
+    </div>
+
+    <div class="item-builder">
+      <h3>ADICIONAR ITENS</h3>
+      <div class="item-row">
+        <div class="form-group">
+          <label>PRODUTO:</label>
+          <select [(ngModel)]="currentProductId" [disabled]="hasProductError">
+            <option [ngValue]="null">{{ hasProductError ? 'SERVIÇO DE ESTOQUE INDISPONÍVEL' : 'SELECIONE O PRODUTO' }}</option>
+            <option *ngFor="let p of products" [ngValue]="p.id">
+              {{ p.descricao }} (SALDO: {{ p.saldo }})
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>QTD:</label>
+          <input type="number" [(ngModel)]="currentQuantity" min="1">
+        </div>
+        <button class="btn-add" (click)="addItem()">ADICIONAR</button>
+      </div>
+
+      <table class="table-items" *ngIf="selectedItems.length > 0">
+        <thead>
+          <tr>
+            <th>PRODUTO</th>
+            <th>QTD</th>
+            <th>UNIT.</th>
+            <th>SUBTOTAL</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of selectedItems">
+            <td>{{ item.product?.descricao }}</td>
+            <td>{{ item.quantidade }}</td>
+            <td>{{ item.preco_unitario | currency:'BRL' }}</td>
+            <td>{{ item.subtotal | currency:'BRL' }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="3" class="total-label">TOTAL:</td>
+            <td class="total-value">{{ calculateTotal() | currency:'BRL' }}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <button 
+      class="btn-save" 
+      [disabled]="hasInvoiceError || hasClientError || hasProductError || isProcessing" 
+      (click)="saveInvoice()">
+      {{ hasInvoiceError ? 'SERVIÇO OFFLINE' : 'ABRIR NOTA' }}
+    </button>
+  </section>
+
+  <hr>
+
+  <!-- Lista de Notas Existentes -->
+  <section class="invoice-list">
+    <h2>NOTAS FISCAIS</h2>
+    <table class="table-main">
+      <thead>
+        <tr>
+          <th>Nº</th>
+          <th>DATA</th>
+          <th>CLIENTE</th>
+          <th>VALOR</th>
+          <th>STATUS</th>
+          <th>AÇÕES</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let inv of invoices">
+          <td>{{ inv.id }}</td>
+          <td>{{ inv.data_criacao | date:'dd/MM/yyyy HH:mm' }}</td>
+          <td>{{ inv.cliente?.nome || 'ID: ' + inv.cliente_id }}</td>
+          <td>{{ inv.valor_total | currency:'BRL' }}</td>
+          <td>
+            <span class="status-badge" [ngClass]="inv.status">{{ inv.status }}</span>
+          </td>
+          <td>
+            <button 
+              class="btn-print" 
+              [disabled]="inv.status !== 'ABERTA' || isProcessing || hasClientError || hasProductError"
+              (click)="printInvoice(inv.id!)">
+              {{ isProcessing ? '...' : (hasClientError || hasProductError ? 'ERRO SERV.' : 'IMPRIMIR') }}
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="(invoices?.length || 0) === 0">
+          <td colspan="6" class="empty-msg">Nenhuma nota encontrada.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Modal de Feedback -->
+  <app-modal 
+    [isOpen]="isModalOpen" 
+    [title]="modalTitle" 
+    [message]="modalMessage" 
+    [type]="modalType" 
+    (closeEvent)="closeModal()"
+    (confirmEvent)="closeModal()">
+  </app-modal>
+
+  <!-- Overlay de Processamento -->
+  <div class="processing-overlay" *ngIf="isProcessing">
+    <div class="loader">Processando Nota...</div>
+  </div>
+</div>

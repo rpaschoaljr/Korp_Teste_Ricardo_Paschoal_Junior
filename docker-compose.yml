@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./docker_postgres_init:/docker-entrypoint-initdb.d
+    networks:
+      - korp_network
+
+  estoque_backend:
+    build:
+      context: ./Back-end/estoque
+    container_name: estoque_api
+    ports:
+      - "8081:8081"
+    environment:
+      - SERVICE_PORT=8081
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=postgres
+    depends_on:
+      - db
+    networks:
+      - korp_network
+
+  faturamento_backend:
+    build:
+      context: ./Back-end/faturamento
+    container_name: faturamento_api
+    ports:
+      - "8082:8082"
+    environment:
+      - SERVICE_PORT=8082
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=postgres
+      - ESTOQUE_URL=http://estoque_api:8081
+      - CLIENTES_URL=http://clientes_api:8083
+      - IMPRESSAO_URL=http://impressao_api:8084
+    depends_on:
+      - db
+    networks:
+      - korp_network
+
+  impressao_backend:
+    build:
+      context: ./Back-end/impressao
+    container_name: impressao_api
+    ports:
+      - "8084:8084"
+    environment:
+      - SERVICE_PORT=8084
+    networks:
+      - korp_network
+
+  clientes_backend:
+    build:
+      context: ./Back-end/clientes
+    container_name: clientes_api
+    ports:
+      - "8083:8083"
+    environment:
+      - SERVICE_PORT=8083
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=postgres
+    depends_on:
+      - db
+    networks:
+      - korp_network
+
+  frontend:
+    build:
+      context: ./Front-end
+    container_name: angular_frontend
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./Front-end:/app
+      - /app/node_modules
+    networks:
+      - korp_network
+
+volumes:
+  pg_data:
+
+networks:
+  korp_network:
+    driver: bridge

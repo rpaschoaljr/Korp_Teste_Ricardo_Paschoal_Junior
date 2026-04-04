@@ -1,0 +1,18 @@
+<div class="app-container">
+  <nav class="navbar">
+    <div class="brand">KORP ERP</div>
+    <ul class="nav-links">
+      <li><a routerLink="/estoque" routerLinkActive="active">ESTOQUE</a></li>
+      <li><a routerLink="/faturamento" routerLinkActive="active">FATURAMENTO</a></li>
+      <li>
+        <button class="theme-toggle" (click)="toggleTheme()">
+          {{ themeService.isDark ? '☀️' : '🌙' }}
+        </button>
+      </li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

@@ -1,0 +1,164 @@
+.faturamento-container {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+h1, h2, h3 {
+  color: var(--text-color);
+}
+
+.invoice-form {
+  background: var(--card-bg);
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+  border: 1px solid var(--border-color);
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  font-weight: bold;
+  font-size: 0.9rem;
+  color: var(--text-color);
+}
+
+select, input {
+  padding: 0.8rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+}
+
+.client-details-box {
+  background-color: var(--bg-color);
+  border: 1px dashed var(--primary-color);
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 0.9rem;
+}
+
+.client-details-box p {
+  margin: 0.3rem 0;
+  color: var(--text-color);
+}
+
+.item-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  background: var(--bg-color);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border-color);
+}
+
+.btn-add {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.table-items, .table-main {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background-color: var(--card-bg);
+}
+
+.table-items th, .table-items td, .table-main th, .table-main td {
+  padding: 0.8rem;
+  border-bottom: 1px solid var(--border-color);
+  text-align: left;
+  color: var(--text-color);
+}
+
+.table-items th, .table-main th {
+  background-color: var(--table-header-bg);
+}
+
+.total-label {
+  text-align: right;
+  font-weight: bold;
+}
+
+.total-value {
+  font-weight: bold;
+  color: var(--success-color);
+  font-size: 1.2rem;
+}
+
+.btn-save {
+  width: 100%;
+  background-color: var(--success-color);
+  color: white;
+  padding: 1rem;
+  border: none;
+  border-radius: 4px;
+  font-weight: bold;
+  cursor: pointer;
+  margin-top: 1.5rem;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.status-badge.ABERTA {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-badge.FECHADA {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.btn-print {
+  background-color: #6f42c1;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-print:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+.processing-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+}
+
+.loader {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+}

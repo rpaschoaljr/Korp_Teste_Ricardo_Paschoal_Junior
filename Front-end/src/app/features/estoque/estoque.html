@@ -1,0 +1,64 @@
+<div class="estoque-container">
+  <h1>CADASTRO DE PRODUTOS</h1>
+
+  <section class="form-section">
+    <div class="form-group">
+      <label for="codigo">CÓDIGO (AUTOMÁTICO):</label>
+      <input type="text" id="codigo" [(ngModel)]="newProduct.codigo" disabled class="disabled-input">
+    </div>
+
+    <div class="form-group">
+      <label for="descricao">DESCRIÇÃO:</label>
+      <input type="text" id="descricao" [(ngModel)]="newProduct.descricao" appUppercase placeholder="DESCRIÇÃO DO PRODUTO">
+    </div>
+
+    <div class="form-group">
+      <label for="saldo">SALDO:</label>
+      <input type="number" id="saldo" [(ngModel)]="newProduct.saldo" min="0">
+    </div>
+
+    <div class="form-group">
+      <label for="preco">PREÇO BASE:</label>
+      <input type="number" id="preco" [(ngModel)]="newProduct.preco_base" min="0">
+    </div>
+
+    <button class="btn-save" (click)="saveProduct()">SALVAR PRODUTO</button>
+  </section>
+
+  <hr>
+
+  <section class="list-section">
+    <h2>PRODUTOS EM ESTOQUE</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>CÓDIGO</th>
+          <th>DESCRIÇÃO</th>
+          <th>SALDO</th>
+          <th>PREÇO BASE</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let p of products">
+          <td>{{ p.codigo }}</td>
+          <td>{{ p.descricao }}</td>
+          <td>{{ p.saldo }}</td>
+          <td>{{ p.preco_base | currency:'BRL' }}</td>
+        </tr>
+        <tr *ngIf="(products?.length || 0) === 0">
+          <td colspan="4" class="empty-msg">Nenhum produto cadastrado.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Modal de Feedback -->
+  <app-modal 
+    [isOpen]="isModalOpen" 
+    [title]="modalTitle" 
+    [message]="modalMessage" 
+    [type]="modalType" 
+    (closeEvent)="closeModal()"
+    (confirmEvent)="closeModal()">
+  </app-modal>
+</div>

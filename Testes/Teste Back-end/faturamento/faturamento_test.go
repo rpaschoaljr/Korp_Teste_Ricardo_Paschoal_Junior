@@ -1,0 +1,122 @@
+package faturamento_test
+
+import (
+	"bytes"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"testing"
+
+	_ "github.com/lib/pq"
+)
+
+type ItemFatura struct {
+	ItemID        int     `json:"item_id"`
+	CodigoProduto string  `json:"codigo_produto"`
+	Quantidade    int     `json:"quantidade"`
+	PrecoUnitario float64 `json:"preco_unitario"`
+	Subtotal      float64 `json:"subtotal"`
+}
+
+type Fatura struct {
+	ID         int          `json:"id"`
+	ClienteID  int          `json:"cliente_id"`
+	Status     string       `json:"status"`
+	ValorTotal float64      `json:"valor_total"`
+	Itens      []ItemFatura `json:"itens"`
+}
+
+type Item struct {
+	ID     int    `json:"id"`
+	Codigo string `json:"codigo"`
+	Saldo  int    `json:"saldo"`
+}
+
+var (
+	dbFaturamentoConn = os.Getenv("DB_FATURAMENTO_CONN")
+	faturamentoURL    = os.Getenv("FATURAMENTO_URL")
+	estoqueURL        = os.Getenv("ESTOQUE_URL")
+)
+
+func getDBConnection(t *testing.T) *sql.DB {
+	if dbFaturamentoConn == "" {
+		dbFaturamentoConn = "postgres://postgres:postgres@localhost:5432/postgres?sslmode=disable"
+	}
+	db, err := sql.Open("postgres", dbFaturamentoConn)
+	if err != nil {
+		t.Fatalf("Erro ao conectar no banco: %v", err)
+	}
+	return db
+}
+
+func TestServicoFaturamento(t *testing.T) {
+	if faturamentoURL == "" {
+		faturamentoURL = "http://localhost:8082"
+	}
+	if estoqueURL == "" {
+		estoqueURL = "http://localhost:8081"
+	}
+
+	db := getDBConnection(t)
+	defer db.Close()
+
+	t.Run("Fluxo Completo: Criar -> Imprimir -> Baixar Estoque", func(t *testing.T) {
+		// 1. Criar um produto dinâmico para o teste
+		novoItem := map[string]interface{}{
+			"descricao":  "PRODUTO TESTE FATURAMENTO",
+			"saldo":      10,
+			"preco_base": 10.0,
+		}
+		bodyItem, _ := json.Marshal(novoItem)
+		respItem, err := http.Post(estoqueURL+"/produtos", "application/json", bytes.NewBuffer(bodyItem))
+		if err != nil {
+			t.Fatalf("Erro ao criar produto para teste: %v", err)
+		}
+		defer respItem.Body.Close()
+		
+		var itemCriado Item
+		json.NewDecoder(respItem.Body).Decode(&itemCriado)
+
+		// 2. Criar Fatura usando o ID e Código gerados
+		novaFatura := Fatura{
+			ClienteID: 1,
+			Itens: []ItemFatura{
+				{ItemID: itemCriado.ID, CodigoProduto: itemCriado.Codigo, Quantidade: 3, PrecoUnitario: 20.0},
+			},
+		}
+
+		bodyFatura, _ := json.Marshal(novaFatura)
+		respFatura, err := http.Post(faturamentoURL+"/faturas", "application/json", bytes.NewBuffer(bodyFatura))
+		if err != nil {
+			t.Fatalf("Erro ao criar fatura: %v", err)
+		}
+		defer respFatura.Body.Close()
+
+		var faturaCriada Fatura
+		json.NewDecoder(respFatura.Body).Decode(&faturaCriada)
+
+		// 3. Imprimir (Efetivar baixa)
+		respImp, err := http.Post(fmt.Sprintf("%s/faturas/%d/imprimir", faturamentoURL, faturaCriada.ID), "application/json", nil)
+		if err != nil {
+			t.Fatalf("Erro ao imprimir fatura: %v", err)
+		}
+		defer respImp.Body.Close()
+
+		if respImp.StatusCode != http.StatusOK {
+			t.Fatalf("Erro ao imprimir fatura, status: %d", respImp.StatusCode)
+		}
+
+		// 4. Validar se estoque foi reduzido para exatamente 7 (10 - 3)
+		var saldoFinal int
+		err = db.QueryRow("SELECT saldo FROM itens WHERE id = $1", itemCriado.ID).Scan(&saldoFinal)
+		if err != nil {
+			t.Fatalf("Erro ao consultar saldo final: %v", err)
+		}
+
+		if saldoFinal != 7 {
+			t.Errorf("Estoque não foi reduzido corretamente. Esperado: 7, Recebido: %d", saldoFinal)
+		}
+	})
+}

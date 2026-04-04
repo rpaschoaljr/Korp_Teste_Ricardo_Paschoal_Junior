@@ -1,0 +1,54 @@
+/* Estilos Globais e Variáveis de Tema */
+
+:root {
+  --primary-color: #3498db;
+  --success-color: #27ae60;
+  --danger-color: #e74c3c;
+  --warning-color: #f1c40f;
+  
+  /* Light Theme (Default) */
+  --bg-color: #f8f9fa;
+  --text-color: #2c3e50;
+  --navbar-bg: #2c3e50;
+  --navbar-text: #ecf0f1;
+  --card-bg: #ffffff;
+  --border-color: #ddd;
+  --table-header-bg: #ecf0f1;
+  --input-bg: #ffffff;
+}
+
+body.dark-theme {
+  --bg-color: #1a1a1a;
+  --text-color: #e0e0e0;
+  --navbar-bg: #000000;
+  --navbar-text: #ffffff;
+  --card-bg: #2d2d2d;
+  --border-color: #444;
+  --table-header-bg: #333;
+  --input-bg: #3d3d3d;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.3s, color 0.3s;
+}
+
+/* Utilitários globais que usam variáveis */
+.card {
+  background-color: var(--card-bg);
+  border: 1px solid var(--border-color);
+}
+
+input, select {
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+}
+
+table th {
+  background-color: var(--table-header-bg);
+  color: var(--text-color);
+}
