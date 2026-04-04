@@ -109,3 +109,15 @@
   color: #6c757d;
   font-style: italic;
 }
+
+.ia-error-box {
+  background-color: var(--warning-bg);
+  color: var(--warning-text);
+  border: 1px solid var(--border-color);
+  padding: 1rem;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  text-align: center;
+  font-weight: bold;
+  font-size: 0.8rem;
+}

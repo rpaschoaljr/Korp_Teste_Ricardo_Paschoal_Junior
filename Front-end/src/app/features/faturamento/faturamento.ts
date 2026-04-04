@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { forkJoin, of } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { forkJoin, of, timer, Subject } from 'rxjs';
+import { catchError, takeUntil } from 'rxjs/operators';
 import { InvoiceService } from '../../core/services/invoice';
 import { ProductService } from '../../core/services/product';
 import { ClientService } from '../../core/services/client';
@@ -10,18 +10,22 @@ import { Invoice, InvoiceItem } from '../../core/models/invoice.model';
 import { Product } from '../../core/models/product.model';
 import { Client } from '../../core/models/client.model';
 import { ModalComponent, ModalType } from '../../shared/components/modal/modal';
+import { HealthCheckService } from '../../core/services/health-check';
+import { ServiceStatusBannerComponent } from '../../shared/components/status-banner/status-banner';
 
 @Component({
   selector: 'app-faturamento',
   standalone: true,
-  imports: [CommonModule, FormsModule, ModalComponent],
+  imports: [CommonModule, FormsModule, ModalComponent, ServiceStatusBannerComponent],
   templateUrl: './faturamento.html',
   styleUrl: './faturamento.css'
 })
-export class FaturamentoComponent implements OnInit {
+export class FaturamentoComponent implements OnInit, OnDestroy {
   invoices: Invoice[] = [];
   products: Product[] = [];
   clients: Client[] = [];
+  
+  private destroy$ = new Subject<void>();
 
   selectedClientId: number | null = null;
   selectedClient: Client | null = null;
@@ -46,39 +50,84 @@ export class FaturamentoComponent implements OnInit {
   constructor(
     private invoiceService: InvoiceService,
     private productService: ProductService,
-    private clientService: ClientService
+    private clientService: ClientService,
+    private healthService: HealthCheckService
   ) {}
 
   ngOnInit(): void {
     console.log('Inicializando Faturamento...');
     this.loadData();
+    this.startHealthMonitoring();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  startHealthMonitoring(): void {
+    this.healthService.health$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(health => {
+        // Se houve mudança significativa nos serviços que este componente usa
+        if (this.hasInvoiceError !== !health.faturamento || 
+            this.hasProductError !== !health.estoque || 
+            this.hasClientError !== !health.clientes) {
+          
+          const wasAnyOffline = this.hasInvoiceError || this.hasProductError || this.hasClientError;
+          
+          this.hasInvoiceError = !health.faturamento;
+          this.hasProductError = !health.estoque;
+          this.hasClientError = !health.clientes;
+
+          const isNowAllOnline = !this.hasInvoiceError && !this.hasProductError && !this.hasClientError;
+
+          // Se estávamos offline e agora tudo voltou, recarregamos
+          if (wasAnyOffline && isNowAllOnline) {
+            console.log('[FATURAMENTO] Serviços restaurados. Atualizando dados...');
+            this.loadData(true);
+          }
+        }
+      });
   }
 
   onClientChange(): void {
     this.selectedClient = this.clients.find(c => c.id === Number(this.selectedClientId)) || null;
   }
 
-  loadData(): void {
-    this.isProcessing = true;
-    this.hasClientError = false;
-    this.hasProductError = false;
-    this.hasInvoiceError = false;
+  loadData(isSilent: boolean = false): void {
+    if (!isSilent) {
+      this.isProcessing = true;
+      this.hasClientError = false;
+      this.hasProductError = false;
+      this.hasInvoiceError = false;
+    }
 
     forkJoin({
-      clients: this.clientService.getClients().pipe(catchError(() => { this.hasClientError = true; return of([]); })),
-      invoices: this.invoiceService.getInvoices().pipe(catchError(() => { this.hasInvoiceError = true; return of([]); })),
-      products: this.productService.getProducts().pipe(catchError(() => { this.hasProductError = true; return of([]); }))
+      clients: this.clientService.getClients().pipe(catchError(() => { this.hasClientError = true; return of(null); })),
+      invoices: this.invoiceService.getInvoices().pipe(catchError(() => { this.hasInvoiceError = true; return of(null); })),
+      products: this.productService.getProducts().pipe(catchError(() => { this.hasProductError = true; return of(null); }))
     }).subscribe({
       next: (result) => {
-        this.clients = result.clients || [];
-        this.products = result.products || [];
-        this.invoices = (result.invoices || []).map(inv => ({
-          ...inv,
-          cliente: this.clients.find(c => c.id === inv.cliente_id)
-        }));
-        this.isProcessing = false;
+        if (result.clients !== null) {
+          this.clients = result.clients;
+          this.hasClientError = false;
+        }
+        if (result.products !== null) {
+          this.products = result.products;
+          this.hasProductError = false;
+        }
+        if (result.invoices !== null) {
+          this.invoices = result.invoices.map(inv => ({
+            ...inv,
+            cliente: this.clients.find(c => c.id === inv.cliente_id)
+          }));
+          this.hasInvoiceError = false;
+        }
+        
+        if (!isSilent) this.isProcessing = false;
 
-        if (this.hasClientError || this.hasProductError || this.hasInvoiceError) {
+        if (!isSilent && (this.hasClientError || this.hasProductError || this.hasInvoiceError)) {
           const serviceList = [];
           if (this.hasClientError) serviceList.push('CLIENTES');
           if (this.hasProductError) serviceList.push('ESTOQUE');
@@ -88,8 +137,10 @@ export class FaturamentoComponent implements OnInit {
         }
       },
       error: () => {
-        this.isProcessing = false;
-        this.showModal('Erro Crítico', 'Falha ao processar dados do sistema.', 'error');
+        if (!isSilent) {
+          this.isProcessing = false;
+          this.showModal('Erro Crítico', 'Falha ao processar dados do sistema.', 'error');
+        }
       }
     });
   }

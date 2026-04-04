@@ -1,20 +1,25 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { timer, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { ProductService } from '../../core/services/product';
 import { Product } from '../../core/models/product.model';
 import { UppercaseDirective } from '../../shared/directives/uppercase';
 import { ModalComponent, ModalType } from '../../shared/components/modal/modal';
+import { HealthCheckService } from '../../core/services/health-check';
+import { ServiceStatusBannerComponent } from '../../shared/components/status-banner/status-banner';
 
 @Component({
   selector: 'app-estoque',
   standalone: true,
-  imports: [CommonModule, FormsModule, UppercaseDirective, ModalComponent],
+  imports: [CommonModule, FormsModule, UppercaseDirective, ModalComponent, ServiceStatusBannerComponent],
   templateUrl: './estoque.html',
   styleUrl: './estoque.css'
 })
-export class EstoqueComponent implements OnInit {
+export class EstoqueComponent implements OnInit, OnDestroy {
   products: Product[] = [];
+  private destroy$ = new Subject<void>();
   newProduct: Product = {
     codigo: '',
     descricao: '',
@@ -28,24 +33,59 @@ export class EstoqueComponent implements OnInit {
   modalTitle = '';
   modalMessage = '';
   modalType: ModalType = 'success';
-  
+
+  hasStockServiceError = false;
+
   selectedProduct: Product | null = null;
   adjustmentValue: number = 0;
 
-  constructor(private productService: ProductService) {}
+  constructor(
+    private productService: ProductService,
+    private healthService: HealthCheckService
+  ) {}
 
   ngOnInit(): void {
     console.log('Inicializando Estoque...');
     this.loadProducts();
+    this.startHealthMonitoring();
   }
 
-  loadProducts(): void {
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  startHealthMonitoring(): void {
+    this.healthService.health$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(health => {
+        // Este componente só se importa com o estoque
+        if (this.hasStockServiceError !== !health.estoque) {
+          const wasOffline = this.hasStockServiceError;
+          this.hasStockServiceError = !health.estoque;
+
+          if (wasOffline && !this.hasStockServiceError) {
+            console.log('[ESTOQUE] Serviço restaurado. Atualizando dados...');
+            this.loadProducts(true);
+          }
+        }
+      });
+  }
+
+  loadProducts(isSilent: boolean = false): void {
+    if (!isSilent) this.hasStockServiceError = false;
     this.productService.getProducts().subscribe({
       next: (data) => {
         this.products = data || [];
+        this.hasStockServiceError = false;
         this.generateNextCode();
       },
-      error: (err) => this.showModal('Erro', 'Falha ao carregar produtos. O serviço de estoque está online?', 'error')
+      error: (err) => {
+        this.hasStockServiceError = true;
+        if (!isSilent) {
+          this.showModal('Erro de Resiliência', 'O serviço de ESTOQUE está offline. Não é possível cadastrar ou ajustar produtos no momento.', 'error');
+        }
+      }
     });
   }
 
@@ -55,7 +95,6 @@ export class EstoqueComponent implements OnInit {
       return;
     }
 
-    // Extrai os números dos códigos atuais (formato PROD-XXX)
     const codes = this.products
       .map(p => p.codigo.replace('PROD-', ''))
       .map(num => parseInt(num, 10))
@@ -66,12 +105,16 @@ export class EstoqueComponent implements OnInit {
       return;
     }
 
-    // Pega o maior número e incrementa
     const nextNum = Math.max(...codes) + 1;
     this.newProduct.codigo = `PROD-${nextNum.toString().padStart(3, '0')}`;
   }
 
   saveProduct(): void {
+    if (this.hasStockServiceError) {
+      this.showModal('Operação Bloqueada', 'Não é possível salvar: o serviço de ESTOQUE está indisponível.', 'error');
+      return;
+    }
+
     if (!this.newProduct.codigo || !this.newProduct.descricao || this.newProduct.saldo < 0) {
       this.showModal('Aviso', 'Preencha todos os campos obrigatórios corretamente.', 'error');
       return;
@@ -81,7 +124,7 @@ export class EstoqueComponent implements OnInit {
       next: () => {
         this.showModal('Sucesso', 'Produto cadastrado com sucesso!', 'success');
         this.resetForm();
-        this.loadProducts(); // Recarrega e gera o próximo código
+        this.loadProducts();
       },
       error: (err) => this.showModal('Erro', 'Não foi possível salvar o produto.', 'error')
     });
@@ -119,6 +162,10 @@ export class EstoqueComponent implements OnInit {
   }
 
   saveAdjustment(): void {
+    if (this.hasStockServiceError) {
+      this.showModal('Erro', 'O serviço de estoque está offline.', 'error');
+      return;
+    }
     if (!this.selectedProduct || this.adjustmentValue < 0) return;
 
     this.productService.adjustStock(this.selectedProduct.id!, this.adjustmentValue).subscribe({

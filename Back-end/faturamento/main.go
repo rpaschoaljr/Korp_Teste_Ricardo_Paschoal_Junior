@@ -33,6 +33,7 @@ func main() {
 	r.POST("/faturas", handlers.CreateFatura)
 	r.POST("/faturas/:id/imprimir", handlers.PrintFatura)
 	r.GET("/faturas/ia/insights", handlers.GetIAInsights)
+	r.GET("/health-stream", handlers.HealthStream)
 
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {

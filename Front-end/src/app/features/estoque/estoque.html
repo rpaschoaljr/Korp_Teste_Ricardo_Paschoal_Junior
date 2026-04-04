@@ -22,7 +22,13 @@
       <input type="number" id="preco" [(ngModel)]="newProduct.preco_base" min="0">
     </div>
 
-    <button class="btn-save" (click)="saveProduct()">SALVAR PRODUTO</button>
+    <app-service-status-banner 
+      style="grid-column: span 2;"
+      [isOffline]="hasStockServiceError"
+      message="SERVIÇO DE ESTOQUE OFFLINE. AGUARDE A RECONEXÃO PARA SALVAR.">
+    </app-service-status-banner>
+
+    <button class="btn-save" [disabled]="hasStockServiceError" (click)="saveProduct()">SALVAR PRODUTO</button>
   </section>
 
   <hr>
@@ -46,7 +52,7 @@
         <td>{{ p.saldo }}</td>
         <td>{{ p.preco_base | currency:'BRL' }}</td>
         <td>
-          <button class="btn-adjust" (click)="openAdjustmentModal(p)">AJUSTAR</button>
+          <button class="btn-adjust" [disabled]="hasStockServiceError" (click)="openAdjustmentModal(p)">AJUSTAR</button>
         </td>
       </tr>
       <tr *ngIf="products.length === 0">

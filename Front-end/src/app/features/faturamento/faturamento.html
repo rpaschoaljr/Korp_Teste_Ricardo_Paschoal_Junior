@@ -7,8 +7,8 @@
     <div class="form-row">
       <div class="form-group">
         <label for="cliente">CLIENTE:</label>
-        <select id="cliente" [(ngModel)]="selectedClientId" (change)="onClientChange()" [disabled]="hasClientError">
-          <option [ngValue]="null">{{ hasClientError ? 'SERVIÇO DE CLIENTES INDISPONÍVEL' : 'SELECIONE UM CLIENTE' }}</option>
+        <select id="cliente" [(ngModel)]="selectedClientId" (change)="onClientChange()" [disabled]="clients.length === 0">
+          <option [ngValue]="null">{{ clients.length === 0 ? 'CARREGANDO CLIENTES...' : 'SELECIONE UM CLIENTE' }}</option>
           <option *ngFor="let c of clients" [ngValue]="c.id">{{ c.nome }}</option>
         </select>
       </div>
@@ -26,8 +26,8 @@
       <div class="item-row">
         <div class="form-group">
           <label>PRODUTO:</label>
-          <select [(ngModel)]="currentProductId" [disabled]="hasProductError">
-            <option [ngValue]="null">{{ hasProductError ? 'SERVIÇO DE ESTOQUE INDISPONÍVEL' : 'SELECIONE O PRODUTO' }}</option>
+          <select [(ngModel)]="currentProductId" [disabled]="products.length === 0">
+            <option [ngValue]="null">{{ products.length === 0 ? 'CARREGANDO PRODUTOS...' : 'SELECIONE O PRODUTO' }}</option>
             <option *ngFor="let p of products" [ngValue]="p.id">
               {{ p.descricao }} (SALDO: {{ p.saldo }})
             </option>
@@ -37,7 +37,10 @@
           <label>QTD:</label>
           <input type="number" [(ngModel)]="currentQuantity" min="1">
         </div>
-        <button class="btn-add" (click)="addItem()">ADICIONAR</button>
+        <div class="form-group">
+          <label>&nbsp;</label> <!-- Espaço para alinhar com os outros labels -->
+          <button class="btn-add" (click)="addItem()">ADICIONAR</button>
+        </div>
       </div>
 
       <table class="table-items" *ngIf="selectedItems.length > 0">
@@ -66,11 +69,16 @@
       </table>
     </div>
 
+    <app-service-status-banner 
+      [isOffline]="hasInvoiceError || hasClientError || hasProductError"
+      message="ALGUNS SERVIÇOS ESTÃO OFFLINE. AGUARDE A RECONEXÃO PARA SALVAR.">
+    </app-service-status-banner>
+
     <button 
       class="btn-save" 
-      [disabled]="hasInvoiceError || hasClientError || hasProductError || isProcessing" 
+      [disabled]="isProcessing || hasInvoiceError || hasClientError || hasProductError" 
       (click)="saveInvoice()">
-      {{ hasInvoiceError ? 'SERVIÇO OFFLINE' : 'ABRIR NOTA' }}
+      ABRIR NOTA
     </button>
   </section>
 
@@ -91,7 +99,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let inv of invoices" [class.invoice-stock-error]="hasStockIssue(inv)">
+        <tr *ngFor="let inv of invoices" [class.invoice-stock-error]="!hasProductError && hasStockIssue(inv)">
           <td>{{ inv.id }}</td>
           <td>{{ inv.data_criacao | date:'dd/MM/yyyy HH:mm' }}</td>
           <td>{{ inv.cliente?.nome || 'ID: ' + inv.cliente_id }}</td>
@@ -155,12 +163,17 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let item of selectedInvoice.itens" [class.insufficient-stock]="item.quantidade > getItemStock(item.item_id)">
+            <tr *ngFor="let item of selectedInvoice.itens" [class.insufficient-stock]="!hasProductError && item.quantidade > getItemStock(item.item_id)">
               <td>{{ item.codigo_produto }}</td>
               <td>
                 {{ item.descricao }}
-                <span class="stock-alert" *ngIf="item.quantidade > getItemStock(item.item_id)">
+                <!-- Alerta de Estoque Real -->
+                <span class="stock-alert" *ngIf="!hasProductError && item.quantidade > getItemStock(item.item_id)">
                   (ESTOQUE: {{ getItemStock(item.item_id) }})
+                </span>
+                <!-- Alerta de Serviço Offline -->
+                <span class="stock-offline-alert" *ngIf="hasProductError">
+                  (ESTOQUE INDISPONÍVEL)
                 </span>
               </td>
               <td>{{ item.quantidade }}</td>
