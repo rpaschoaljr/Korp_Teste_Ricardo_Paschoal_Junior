@@ -45,7 +45,7 @@
           <td>{{ p.saldo }}</td>
           <td>{{ p.preco_base | currency:'BRL' }}</td>
         </tr>
-        <tr *ngIf="(products?.length || 0) === 0">
+        <tr *ngIf="products.length === 0">
           <td colspan="4" class="empty-msg">Nenhum produto cadastrado.</td>
         </tr>
       </tbody>

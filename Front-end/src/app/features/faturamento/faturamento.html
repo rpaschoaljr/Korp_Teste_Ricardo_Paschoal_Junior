@@ -108,7 +108,7 @@
             </button>
           </td>
         </tr>
-        <tr *ngIf="(invoices?.length || 0) === 0">
+        <tr *ngIf="invoices.length === 0">
           <td colspan="6" class="empty-msg">Nenhuma nota encontrada.</td>
         </tr>
       </tbody>

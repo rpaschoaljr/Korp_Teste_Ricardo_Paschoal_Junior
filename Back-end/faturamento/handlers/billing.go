@@ -79,58 +79,66 @@ func PrintFatura(c *gin.Context) {
 	id, _ := strconv.Atoi(idStr)
 	fmt.Printf("[DEBUG-FAT] Iniciando impressao da fatura ID: %d\n", id)
 
+	// --- INICIO DA TRAVA DE CONCORRENCIA / IDEMPOTENCIA ---
+	tx, err := database.DB.Begin()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao iniciar transacao de seguranca"})
+		return
+	}
+	defer tx.Rollback()
+
+	var currentStatus string
+	// O FOR UPDATE bloqueia a linha no banco ate o Commit/Rollback, impedindo que outra 
+	// requisicao simultanea leia o status 'ABERTA' ao mesmo tempo.
+	err = tx.QueryRow("SELECT status FROM faturas WHERE id = $1 FOR UPDATE", id).Scan(&currentStatus)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Fatura nao encontrada"})
+		return
+	}
+
+	if currentStatus != "ABERTA" {
+		c.JSON(http.StatusConflict, gin.H{"error": "Esta nota ja foi processada ou esta fechada. Operacao cancelada para evitar duplicidade."})
+		return
+	}
+	// --- FIM DA TRAVA ---
+
 	clientHealth := services.NewClientServiceHealth()
 	stockClient := services.NewStockClient()
 	printClient := services.NewPrintClient()
 
+	// ... verificacoes de health permanecem ...
 	if err := clientHealth.CheckHealth(); err != nil {
-		fmt.Printf("[DEBUG-FAT] Erro Health Clientes: %v\n", err)
 		c.JSON(http.StatusServiceUnavailable, gin.H{"service": "CLIENTES", "error": "Servico de CLIENTES indisponivel."})
 		return
 	}
 	if err := printClient.CheckHealth(); err != nil {
-		fmt.Printf("[DEBUG-FAT] Erro Health Impressao: %v\n", err)
 		c.JSON(http.StatusServiceUnavailable, gin.H{"service": "IMPRESSAO", "error": "Servico de IMPRESSAO indisponivel."})
 		return
 	}
 
 	var fatura models.Fatura
-	err := database.DB.QueryRow("SELECT id, cliente_id, status, valor_total, data_criacao FROM faturas WHERE id = $1", id).
+	// Recarregamos os dados (ja estamos dentro da transacao segura)
+	err = tx.QueryRow("SELECT id, cliente_id, status, valor_total, data_criacao FROM faturas WHERE id = $1", id).
 		Scan(&fatura.ID, &fatura.ClienteID, &fatura.Status, &fatura.ValorTotal, &fatura.DataCriacao)
 	if err != nil {
-		fmt.Printf("[DEBUG-FAT] Erro ao buscar fatura no banco: %v\n", err)
-		c.JSON(http.StatusNotFound, gin.H{"error": "Fatura nao encontrada"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao recuperar dados da fatura"})
 		return
 	}
 
-	// Busca detalhes do Cliente
+	// Busca detalhes do Cliente (externo)
 	clientURL := os.Getenv("CLIENTES_URL")
 	if clientURL == "" { clientURL = "http://clientes_api:8083" }
-	fullClientURL := fmt.Sprintf("%s/clientes/%d", clientURL, fatura.ClienteID)
-	fmt.Printf("[DEBUG-FAT] Chamando Cliente: %s\n", fullClientURL)
-
-	resp, err := http.Get(fullClientURL)
+	resp, err := http.Get(fmt.Sprintf("%s/clientes/%d", clientURL, fatura.ClienteID))
 	var clientInfo models.ClientInfo
 	if err != nil || resp.StatusCode != http.StatusOK {
-		status := "ERRO CONEXAO"
-		if resp != nil { status = strconv.Itoa(resp.StatusCode) }
-		fmt.Printf("[DEBUG-FAT] Erro ao obter detalhes do cliente: %s\n", status)
-		c.JSON(http.StatusServiceUnavailable, gin.H{"service": "CLIENTES", "error": "Nao foi possivel obter os detalhes cadastrais do cliente para a nota."})
+		c.JSON(http.StatusServiceUnavailable, gin.H{"service": "CLIENTES", "error": "Nao foi possivel obter detalhes do cliente."})
 		return
 	}
-	
-	err = json.NewDecoder(resp.Body).Decode(&clientInfo)
-	if err != nil {
-		fmt.Printf("[DEBUG-FAT] Erro ao decodificar Cliente: %v\n", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro de processamento nos dados do cliente"})
-		resp.Body.Close()
-		return
-	}
+	json.NewDecoder(resp.Body).Decode(&clientInfo)
 	resp.Body.Close()
-	fmt.Printf("[DEBUG-FAT] Cliente recuperado: %+v\n", clientInfo)
 
-	// Busca Itens
-	rows, err := database.DB.Query(`
+	// Busca Itens (local)
+	rows, err := tx.Query(`
 		SELECT i.codigo, i.descricao, it.quantidade, it.preco_unitario, it.subtotal 
 		FROM itens_fatura it 
 		JOIN itens i ON it.item_id = i.id 
@@ -157,12 +165,11 @@ func PrintFatura(c *gin.Context) {
 		Data:       fatura.DataCriacao.Format("02/01/2006 15:04"),
 		Itens:      itens,
 	}
-	fmt.Printf("[DEBUG-FAT] Payload para Impressao: ID=%d, NomeCli='%s', Itens=%d\n", printData.ID, printData.Cliente.Nome, len(printData.Itens))
 
+	// Chamadas externas (PDF e Estoque)
 	pdfBytes, err := printClient.GeneratePDF(printData)
 	if err != nil {
-		fmt.Printf("[DEBUG-FAT] Erro ao chamar Impressao: %v\n", err)
-		c.JSON(http.StatusServiceUnavailable, gin.H{"service": "IMPRESSAO", "error": "Falha ao gerar documento: " + err.Error()})
+		c.JSON(http.StatusServiceUnavailable, gin.H{"service": "IMPRESSAO", "error": "Falha ao gerar PDF: " + err.Error()})
 		return
 	}
 
@@ -171,15 +178,22 @@ func PrintFatura(c *gin.Context) {
 		return
 	}
 
-	_, err = database.DB.Exec("UPDATE faturas SET status = 'FECHADA' WHERE id = $1", id)
+	// Se chegou aqui, deu tudo certo. Fechamos a nota.
+	_, err = tx.Exec("UPDATE faturas SET status = 'FECHADA' WHERE id = $1", id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao fechar fatura no banco local"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao finalizar nota no banco"})
+		return
+	}
+
+	if err := tx.Commit(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao confirmar transacao final"})
 		return
 	}
 
 	c.Header("Content-Type", "application/pdf")
 	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }
+
 
 func ListFaturas(c *gin.Context) {
 	rows, err := database.DB.Query("SELECT id, cliente_id, status, valor_total, data_criacao FROM faturas ORDER BY data_criacao DESC")
