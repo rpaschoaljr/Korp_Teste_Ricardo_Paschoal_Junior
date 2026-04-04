@@ -43,3 +43,22 @@ func (s *StockClient) ReduceStock(updates []models.StockUpdate) error {
 
 	return nil
 }
+
+func (s *StockClient) GetProducts() ([]models.ProductInfo, error) {
+	client := &http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(s.BaseURL + "/produtos")
+	if err != nil {
+		return nil, fmt.Errorf("servico de estoque offline: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("estoque retornou erro %d", resp.StatusCode)
+	}
+
+	var products []models.ProductInfo
+	if err := json.NewDecoder(resp.Body).Decode(&products); err != nil {
+		return nil, err
+	}
+	return products, nil
+}

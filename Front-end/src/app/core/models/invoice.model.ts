@@ -7,6 +7,8 @@ export interface InvoiceItem {
   id?: number;
   fatura_id?: number;
   item_id: number;
+  codigo_produto?: string; // Adicionado para exibição
+  descricao?: string;      // Adicionado para exibição
   quantidade: number;
   preco_unitario: number;
   subtotal: number;

@@ -18,4 +18,8 @@ export class ProductService {
   createProduct(product: Product): Observable<Product> {
     return this.http.post<Product>(this.apiUrl, product);
   }
+
+  adjustStock(id: number, newSaldo: number): Observable<any> {
+    return this.http.put(`${this.apiUrl}/ajuste`, { id, saldo: newSaldo });
+  }
 }

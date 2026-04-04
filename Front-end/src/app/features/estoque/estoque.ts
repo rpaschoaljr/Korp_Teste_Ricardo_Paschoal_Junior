@@ -24,9 +24,13 @@ export class EstoqueComponent implements OnInit {
 
   // Controle do Modal
   isModalOpen = false;
+  isAdjustmentModalOpen = false;
   modalTitle = '';
   modalMessage = '';
   modalType: ModalType = 'success';
+  
+  selectedProduct: Product | null = null;
+  adjustmentValue: number = 0;
 
   constructor(private productService: ProductService) {}
 
@@ -101,5 +105,29 @@ export class EstoqueComponent implements OnInit {
 
   closeModal(): void {
     this.isModalOpen = false;
+  }
+
+  openAdjustmentModal(product: Product): void {
+    this.selectedProduct = product;
+    this.adjustmentValue = product.saldo;
+    this.isAdjustmentModalOpen = true;
+  }
+
+  closeAdjustmentModal(): void {
+    this.isAdjustmentModalOpen = false;
+    this.selectedProduct = null;
+  }
+
+  saveAdjustment(): void {
+    if (!this.selectedProduct || this.adjustmentValue < 0) return;
+
+    this.productService.adjustStock(this.selectedProduct.id!, this.adjustmentValue).subscribe({
+      next: () => {
+        this.showModal('Sucesso', 'Estoque ajustado com sucesso!', 'success');
+        this.closeAdjustmentModal();
+        this.loadProducts();
+      },
+      error: () => this.showModal('Erro', 'Falha ao ajustar estoque.', 'error')
+    });
   }
 }

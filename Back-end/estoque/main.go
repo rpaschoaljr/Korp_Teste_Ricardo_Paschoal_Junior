@@ -32,6 +32,7 @@ func main() {
 	r.GET("/produtos", handlers.GetProducts)
 	r.POST("/produtos", handlers.CreateProduct)
 	r.POST("/produtos/baixa", handlers.UpdateStock)
+	r.PUT("/produtos/ajuste", handlers.ManualStockAdjustment)
 
 	port := os.Getenv("SERVICE_PORT")
 	if port == "" {

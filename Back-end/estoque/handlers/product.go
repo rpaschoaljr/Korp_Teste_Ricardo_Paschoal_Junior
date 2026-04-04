@@ -115,3 +115,28 @@ func UpdateStock(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Estoque atualizado com sucesso"})
 }
+
+func ManualStockAdjustment(c *gin.Context) {
+	var input struct {
+		ID    int `json:"id" binding:"required"`
+		Saldo int `json:"saldo"`
+	}
+
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos"})
+		return
+	}
+
+	if input.Saldo < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "O saldo não pode ser negativo"})
+		return
+	}
+
+	_, err := database.DB.Exec("UPDATE itens SET saldo = $1 WHERE id = $2", input.Saldo, input.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erro ao ajustar estoque"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Estoque ajustado com sucesso"})
+}

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -174,7 +175,17 @@ func PrintFatura(c *gin.Context) {
 	}
 
 	if err := stockClient.ReduceStock(stockUpdates); err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{"service": "ESTOQUE", "error": "Falha na baixa de estoque: " + err.Error()})
+		// Se o erro contém "estoque recusou a baixa", tratamos como erro de negócio (422)
+		// caso contrário, tratamos como erro de serviço (503)
+		status := http.StatusServiceUnavailable
+		if strings.Contains(err.Error(), "estoque recusou a baixa") {
+			status = http.StatusUnprocessableEntity
+		}
+
+		c.JSON(status, gin.H{
+			"service": "ESTOQUE",
+			"error":   "Falha na baixa de estoque: " + err.Error(),
+		})
 		return
 	}
 
@@ -207,6 +218,25 @@ func ListFaturas(c *gin.Context) {
 	for rows.Next() {
 		var f models.Fatura
 		rows.Scan(&f.ID, &f.ClienteID, &f.Status, &f.ValorTotal, &f.DataCriacao)
+
+		// Buscar itens para cada fatura
+		itemRows, err := database.DB.Query(`
+			SELECT it.id, it.item_id, it.quantidade, it.preco_unitario, it.subtotal, i.codigo, i.descricao
+			FROM itens_fatura it
+			JOIN itens i ON it.item_id = i.id
+			WHERE it.fatura_id = $1`, f.ID)
+		
+		if err == nil {
+			var itens []models.ItemFatura
+			for itemRows.Next() {
+				var item models.ItemFatura
+				itemRows.Scan(&item.ID, &item.ItemID, &item.Quantidade, &item.PrecoUnitario, &item.Subtotal, &item.CodigoProduto, &item.Descricao)
+				itens = append(itens, item)
+			}
+			f.Itens = itens
+			itemRows.Close()
+		}
+
 		faturas = append(faturas, f)
 	}
 

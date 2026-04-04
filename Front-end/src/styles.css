@@ -15,6 +15,10 @@
   --border-color: #ddd;
   --table-header-bg: #ecf0f1;
   --input-bg: #ffffff;
+  --ia-panel-bg: #f8f9fa;
+  --ia-card-bg: #ffffff;
+  --ia-text: #2c3e50;
+  --ia-action-bg: #f1f3f5;
 }
 
 body.dark-theme {
@@ -26,6 +30,10 @@ body.dark-theme {
   --border-color: #444;
   --table-header-bg: #333;
   --input-bg: #3d3d3d;
+  --ia-panel-bg: #2d2d2d;
+  --ia-card-bg: #3d3d3d;
+  --ia-text: #e0e0e0;
+  --ia-action-bg: #444;
 }
 
 body {

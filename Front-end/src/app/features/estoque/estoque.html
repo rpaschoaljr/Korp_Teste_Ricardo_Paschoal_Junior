@@ -36,24 +36,50 @@
           <th>DESCRIÇÃO</th>
           <th>SALDO</th>
           <th>PREÇO BASE</th>
+          <th>AÇÕES</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let p of products">
-          <td>{{ p.codigo }}</td>
-          <td>{{ p.descricao }}</td>
-          <td>{{ p.saldo }}</td>
-          <td>{{ p.preco_base | currency:'BRL' }}</td>
-        </tr>
-        <tr *ngIf="products.length === 0">
-          <td colspan="4" class="empty-msg">Nenhum produto cadastrado.</td>
-        </tr>
+      <tr *ngFor="let p of products">
+        <td>{{ p.codigo }}</td>
+        <td>{{ p.descricao }}</td>
+        <td>{{ p.saldo }}</td>
+        <td>{{ p.preco_base | currency:'BRL' }}</td>
+        <td>
+          <button class="btn-adjust" (click)="openAdjustmentModal(p)">AJUSTAR</button>
+        </td>
+      </tr>
+      <tr *ngIf="products.length === 0">
+        <td colspan="5" class="empty-msg">Nenhum produto cadastrado.</td>
+      </tr>
       </tbody>
-    </table>
-  </section>
+      </table>
+      </section>
 
-  <!-- Modal de Feedback -->
-  <app-modal 
+      <!-- Modal de Ajuste de Estoque -->
+      <div class="adjustment-modal-overlay" *ngIf="isAdjustmentModalOpen && selectedProduct">
+      <div class="adjustment-modal-content">
+      <div class="adjustment-modal-header">
+      <h2>AJUSTAR ESTOQUE: {{ selectedProduct.codigo }}</h2>
+      <button class="btn-close-modal" (click)="closeAdjustmentModal()">X</button>
+      </div>
+      <div class="adjustment-modal-body">
+      <p><strong>PRODUTO:</strong> {{ selectedProduct.descricao }}</p>
+      <div class="form-group">
+        <label for="newSaldo">NOVO SALDO:</label>
+        <input type="number" id="newSaldo" [(ngModel)]="adjustmentValue" min="0">
+      </div>
+      </div>
+      <div class="adjustment-modal-footer">
+      <button class="btn-cancel" (click)="closeAdjustmentModal()">CANCELAR</button>
+      <button class="btn-save-adjustment" (click)="saveAdjustment()">SALVAR AJUSTE</button>
+      </div>
+      </div>
+      </div>
+
+      <!-- Modal de Feedback -->
+      <app-modal 
+      ...
     [isOpen]="isModalOpen" 
     [title]="modalTitle" 
     [message]="modalMessage" 

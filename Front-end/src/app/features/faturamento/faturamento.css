@@ -131,7 +131,7 @@ select, input {
 }
 
 .btn-print {
-  background-color: #6f42c1;
+  background-color: var(--success-color); /* Verde para imprimir */
   color: white;
   border: none;
   padding: 6px 12px;
@@ -140,9 +140,165 @@ select, input {
 }
 
 .btn-print:disabled {
-  background-color: #ccc;
+  background-color: rgba(231, 76, 60, 0.8); /* Vermelho Transparente (var --danger-color) mais visível */
+  color: white;
   cursor: not-allowed;
 }
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-view {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.8rem;
+  transition: opacity 0.2s;
+}
+
+.btn-view:hover {
+  opacity: 0.8;
+}
+
+/* Modal de Visualização */
+.view-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.view-modal-content {
+  background: var(--card-bg);
+  color: var(--text-color);
+  width: 90%;
+  max-width: 800px;
+  max-height: 80vh;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  border: 1px solid var(--border-color);
+}
+
+.view-modal-header {
+  padding: 1rem 1.5rem;
+  background: var(--table-header-bg);
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.view-modal-header h2 {
+  margin: 0;
+  color: var(--primary-color);
+  font-size: 1.2rem;
+}
+
+.btn-close-modal {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-color);
+  opacity: 0.7;
+}
+
+.btn-close-modal:hover {
+  opacity: 1;
+}
+
+.view-modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  background: var(--card-bg);
+}
+
+.invoice-info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: var(--bg-color);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+
+.invoice-info-grid p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.view-modal-body h3 {
+  margin-top: 0;
+  font-size: 1rem;
+  color: var(--text-color);
+  border-bottom: 2px solid var(--primary-color);
+  padding-bottom: 4px;
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.view-modal-footer {
+  padding: 1rem 1.5rem;
+  background: var(--table-header-bg);
+  border-top: 1px solid var(--border-color);
+  text-align: right;
+}
+
+.btn-close-view {
+  background: #6c757d;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+/* Destaque de Estoque no Modal */
+.insufficient-stock {
+  background-color: rgba(231, 76, 60, 0.1) !important;
+}
+
+.insufficient-stock td {
+  color: #c0392b !important;
+}
+
+.stock-alert {
+  display: block;
+  font-size: 0.75rem;
+  color: #e74c3c;
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+/* Destaque de Nota na Tabela Principal */
+.invoice-stock-error {
+  background-color: rgba(231, 76, 60, 0.05) !important;
+}
+
+.invoice-stock-error td {
+  color: #c0392b !important;
+  border-left: 4px solid #e74c3c;
+}
+
 
 .processing-overlay {
   position: fixed;

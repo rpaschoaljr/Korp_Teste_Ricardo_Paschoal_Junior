@@ -44,6 +44,12 @@ A reatividade do sistema é baseada em RxJS:
 - **Trava de Linha (FOR UPDATE):** No Postgres, utilizamos `SELECT ... FOR UPDATE` para travar o registro da nota no início da impressão, garantindo que dois processos não tentem fechar a mesma nota simultaneamente.
 - **Atualização Atômica de Estoque:** O desconto de saldo é feito diretamente via SQL condicional para evitar que dois usuários vendam o mesmo item físico se o saldo for insuficiente.
 
+### Inteligência Artificial e BI Preditivo (Diferencial)
+- **Módulo de Análise Preditiva:** Implementamos um algoritmo de inteligência de negócio que analisa o fluxo de vendas histórico.
+- **Predição de Ruptura de Estoque:** O sistema calcula a velocidade de saída de cada produto e cruza com o saldo real do microsserviço de estoque, alertando quando o produto acabará em menos de 7 dias.
+- **Análise de Churn de Clientes:** Identifica automaticamente clientes inativos com base no intervalo médio de compras, sugerindo ações de reativação.
+- **Interface Flutuante:** No frontend, um painel dedicado ("IA Insights") exibe essas recomendações de forma proativa para o gestor.
+
 ### Biblioteca de PDF
 - **gofpdf:** Utilizada no microsserviço de impressão para gerar dinamicamente o documento da nota fiscal em formato PDF.
 

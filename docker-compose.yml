@@ -8,11 +8,13 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: postgres
+      SEED_DATABASE: "false" # Define como "true" para popular massa de teste (só roda se o volume pg_data estiver vazio)
     ports:
       - "5432:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./docker_postgres_init:/docker-entrypoint-initdb.d
+      - ./support_scripts/super_seed.sql:/docker-entrypoint-initdb.d/03-super_seed.sql
     networks:
       - korp_network
 

@@ -44,3 +44,11 @@ type PrintData struct {
 	Data       string       `json:"data"`
 	Itens      []ItemFatura `json:"itens"`
 }
+
+type ProductInfo struct {
+	ID        int     `json:"id"`
+	Codigo    string  `json:"codigo"`
+	Descricao string  `json:"descricao"`
+	Saldo     int     `json:"saldo"`
+	PrecoBase float64 `json:"preco_base"`
+}

@@ -32,9 +32,12 @@ export class FaturamentoComponent implements OnInit {
 
   isProcessing = false;
   isModalOpen = false;
+  isViewModalOpen = false;
   modalTitle = '';
   modalMessage = '';
   modalType: ModalType = 'success';
+  
+  selectedInvoice: Invoice | null = null;
   
   hasClientError = false;
   hasProductError = false;
@@ -99,17 +102,9 @@ export class FaturamentoComponent implements OnInit {
     const existingItemIndex = this.selectedItems.findIndex(item => item.item_id === product.id);
     if (existingItemIndex > -1) {
       const totalQuantity = this.selectedItems[existingItemIndex].quantidade + this.currentQuantity;
-      if (totalQuantity > product.saldo) {
-        this.showModal('Aviso', `Saldo insuficiente para acumular ${product.descricao}.`, 'error');
-        return;
-      }
       this.selectedItems[existingItemIndex].quantidade = totalQuantity;
       this.selectedItems[existingItemIndex].subtotal = totalQuantity * product.preco_base;
     } else {
-      if (this.currentQuantity > product.saldo) {
-        this.showModal('Aviso', `Saldo insuficiente para ${product.descricao}.`, 'error');
-        return;
-      }
       this.selectedItems.push({
         item_id: product.id!,
         quantidade: this.currentQuantity,
@@ -203,5 +198,25 @@ export class FaturamentoComponent implements OnInit {
 
   closeModal(): void {
     this.isModalOpen = false;
+  }
+
+  viewInvoice(invoice: Invoice): void {
+    this.selectedInvoice = invoice;
+    this.isViewModalOpen = true;
+  }
+
+  closeViewModal(): void {
+    this.isViewModalOpen = false;
+    this.selectedInvoice = null;
+  }
+
+  getItemStock(productId: number): number {
+    const product = this.products.find(p => p.id === productId);
+    return product ? product.saldo : 0;
+  }
+
+  hasStockIssue(invoice: Invoice): boolean {
+    if (!invoice.itens || invoice.status === 'FECHADA') return false;
+    return invoice.itens.some(item => item.quantidade > this.getItemStock(item.item_id));
   }
 }

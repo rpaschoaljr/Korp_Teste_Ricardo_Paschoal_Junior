@@ -1,0 +1,111 @@
+.ia-trigger {
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 30px;
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: bold;
+  z-index: 1000;
+  transition: transform 0.2s;
+}
+
+.ia-trigger:hover {
+  transform: scale(1.05);
+}
+
+.ia-panel {
+  position: fixed;
+  top: 0;
+  right: -400px;
+  width: 350px;
+  height: 100vh;
+  background: var(--ia-panel-bg);
+  color: var(--ia-text);
+  box-shadow: -5px 0 15px rgba(0,0,0,0.2);
+  transition: right 0.3s ease-in-out;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+}
+
+.ia-panel.open {
+  right: 0;
+}
+
+.ia-header {
+  background: var(--navbar-bg);
+  color: var(--navbar-text);
+  padding: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ia-header h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  color: var(--navbar-text);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.ia-content {
+  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.insight-card {
+  background: var(--ia-card-bg);
+  border-left: 5px solid #ccc;
+  padding: 15px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  color: var(--ia-text);
+}
+
+.insight-card.ALTA { border-left-color: #dc3545; }
+.insight-card.MEDIA { border-left-color: #ffc107; }
+.insight-card.BAIXA { border-left-color: #0dcaf0; }
+
+.insight-type {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #888;
+  margin-bottom: 5px;
+  text-transform: uppercase;
+}
+
+.insight-msg {
+  font-size: 0.9rem;
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.insight-action {
+  font-size: 0.85rem;
+  background: var(--ia-action-bg);
+  padding: 8px;
+  border-radius: 4px;
+  color: var(--ia-text);
+}
+
+.loader {
+  text-align: center;
+  padding: 40px;
+  color: #6c757d;
+  font-style: italic;
+}

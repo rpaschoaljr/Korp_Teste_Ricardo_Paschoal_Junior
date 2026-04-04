@@ -91,7 +91,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let inv of invoices">
+        <tr *ngFor="let inv of invoices" [class.invoice-stock-error]="hasStockIssue(inv)">
           <td>{{ inv.id }}</td>
           <td>{{ inv.data_criacao | date:'dd/MM/yyyy HH:mm' }}</td>
           <td>{{ inv.cliente?.nome || 'ID: ' + inv.cliente_id }}</td>
@@ -100,12 +100,15 @@
             <span class="status-badge" [ngClass]="inv.status">{{ inv.status }}</span>
           </td>
           <td>
-            <button 
-              class="btn-print" 
-              [disabled]="inv.status !== 'ABERTA' || isProcessing || hasClientError || hasProductError"
-              (click)="printInvoice(inv.id!)">
-              {{ isProcessing ? '...' : (hasClientError || hasProductError ? 'ERRO SERV.' : 'IMPRIMIR') }}
-            </button>
+            <div class="actions-cell">
+              <button class="btn-view" (click)="viewInvoice(inv)">VER ITENS</button>
+              <button 
+                class="btn-print" 
+                [disabled]="inv.status !== 'ABERTA' || isProcessing || hasClientError || hasProductError"
+                (click)="printInvoice(inv.id!)">
+                {{ isProcessing ? '...' : (hasClientError || hasProductError ? 'ERRO SERV.' : 'IMPRIMIR') }}
+              </button>
+            </div>
           </td>
         </tr>
         <tr *ngIf="invoices.length === 0">
@@ -124,6 +127,57 @@
     (closeEvent)="closeModal()"
     (confirmEvent)="closeModal()">
   </app-modal>
+
+  <!-- Modal de Visualização de Itens -->
+  <div class="view-modal-overlay" *ngIf="isViewModalOpen && selectedInvoice">
+    <div class="view-modal-content">
+      <div class="view-modal-header">
+        <h2>DETALHES DA NOTA FISCAL Nº {{ selectedInvoice.id }}</h2>
+        <button class="btn-close-modal" (click)="closeViewModal()">X</button>
+      </div>
+      <div class="view-modal-body">
+        <div class="invoice-info-grid">
+          <p><strong>CLIENTE:</strong> {{ selectedInvoice.cliente?.nome || 'ID: ' + selectedInvoice.cliente_id }}</p>
+          <p><strong>STATUS:</strong> <span class="status-badge" [ngClass]="selectedInvoice.status">{{ selectedInvoice.status }}</span></p>
+          <p><strong>DATA:</strong> {{ selectedInvoice.data_criacao | date:'dd/MM/yyyy HH:mm' }}</p>
+          <p><strong>VALOR TOTAL:</strong> {{ selectedInvoice.valor_total | currency:'BRL' }}</p>
+        </div>
+        
+        <h3>ITENS DA NOTA</h3>
+        <table class="table-items">
+          <thead>
+            <tr>
+              <th>CÓDIGO</th>
+              <th>DESCRIÇÃO</th>
+              <th>QTD</th>
+              <th>UNIT.</th>
+              <th>SUBTOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of selectedInvoice.itens" [class.insufficient-stock]="item.quantidade > getItemStock(item.item_id)">
+              <td>{{ item.codigo_produto }}</td>
+              <td>
+                {{ item.descricao }}
+                <span class="stock-alert" *ngIf="item.quantidade > getItemStock(item.item_id)">
+                  (ESTOQUE: {{ getItemStock(item.item_id) }})
+                </span>
+              </td>
+              <td>{{ item.quantidade }}</td>
+              <td>{{ item.preco_unitario | currency:'BRL' }}</td>
+              <td>{{ item.subtotal | currency:'BRL' }}</td>
+            </tr>
+            <tr *ngIf="!selectedInvoice.itens || selectedInvoice.itens.length === 0">
+              <td colspan="5" class="empty-msg">Nenhum item encontrado nesta nota.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="view-modal-footer">
+        <button class="btn-close-view" (click)="closeViewModal()">FECHAR</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Overlay de Processamento -->
   <div class="processing-overlay" *ngIf="isProcessing">

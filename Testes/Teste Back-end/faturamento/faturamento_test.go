@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"testing"
+	"time"
 
 	_ "github.com/lib/pq"
 )
@@ -63,9 +64,11 @@ func TestServicoFaturamento(t *testing.T) {
 	defer db.Close()
 
 	t.Run("Fluxo Completo: Criar -> Imprimir -> Baixar Estoque", func(t *testing.T) {
+		ts := time.Now().UnixNano()
 		// 1. Criar um produto dinâmico para o teste
 		novoItem := map[string]interface{}{
-			"descricao":  "PRODUTO TESTE FATURAMENTO",
+			"codigo":     fmt.Sprintf("TEST-OK-%d", ts),
+			"descricao":  fmt.Sprintf("PRODUTO TESTE OK %d", ts),
 			"saldo":      10,
 			"preco_base": 10.0,
 		}
@@ -117,6 +120,66 @@ func TestServicoFaturamento(t *testing.T) {
 
 		if saldoFinal != 7 {
 			t.Errorf("Estoque não foi reduzido corretamente. Esperado: 7, Recebido: %d", saldoFinal)
+		}
+	})
+
+	t.Run("Fluxo Erro: Saldo Insuficiente ao Fechar Nota", func(t *testing.T) {
+		ts := time.Now().UnixNano()
+		// 1. Criar um produto com saldo 2
+		novoItem := map[string]interface{}{
+			"codigo":     fmt.Sprintf("TEST-FAIL-%d", ts),
+			"descricao":  fmt.Sprintf("PRODUTO TESTE FAIL %d", ts),
+			"saldo":      2,
+			"preco_base": 10.0,
+		}
+		bodyItem, _ := json.Marshal(novoItem)
+		respItem, err := http.Post(estoqueURL+"/produtos", "application/json", bytes.NewBuffer(bodyItem))
+		if err != nil {
+			t.Fatalf("Erro ao criar produto para teste: %v", err)
+		}
+		defer respItem.Body.Close()
+		
+		var itemCriado Item
+		json.NewDecoder(respItem.Body).Decode(&itemCriado)
+
+		// 2. Criar Fatura pedindo 5 unidades (mais que o saldo 2)
+		novaFatura := Fatura{
+			ClienteID: 1,
+			Itens: []ItemFatura{
+				{ItemID: itemCriado.ID, CodigoProduto: itemCriado.Codigo, Quantidade: 5, PrecoUnitario: 20.0},
+			},
+		}
+
+		bodyFatura, _ := json.Marshal(novaFatura)
+		respFatura, err := http.Post(faturamentoURL+"/faturas", "application/json", bytes.NewBuffer(bodyFatura))
+		if err != nil {
+			t.Fatalf("Erro ao criar fatura: %v", err)
+		}
+		defer respFatura.Body.Close()
+
+		var faturaCriada Fatura
+		json.NewDecoder(respFatura.Body).Decode(&faturaCriada)
+
+		// 3. Tentar Imprimir (Deve falhar)
+		respImp, err := http.Post(fmt.Sprintf("%s/faturas/%d/imprimir", faturamentoURL, faturaCriada.ID), "application/json", nil)
+		if err != nil {
+			t.Fatalf("Erro ao chamar endpoint de impressão: %v", err)
+		}
+		defer respImp.Body.Close()
+
+		if respImp.StatusCode != http.StatusUnprocessableEntity {
+			t.Errorf("Esperado status 422 (Unprocessable Entity) por saldo insuficiente, recebido: %d", respImp.StatusCode)
+		}
+
+		// 4. Validar se o status da nota continua 'ABERTA' no banco
+		var status string
+		err = db.QueryRow("SELECT status FROM faturas WHERE id = $1", faturaCriada.ID).Scan(&status)
+		if err != nil {
+			t.Fatalf("Erro ao consultar status da fatura: %v", err)
+		}
+
+		if status != "ABERTA" {
+			t.Errorf("A fatura deveria continuar ABERTA após falha no estoque, mas está: %s", status)
 		}
 	})
 }
