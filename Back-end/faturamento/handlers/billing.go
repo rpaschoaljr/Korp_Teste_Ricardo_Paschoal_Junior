@@ -26,7 +26,19 @@ func CreateFatura(c *gin.Context) {
 
 	var f models.Fatura
 	if err := c.ShouldBindJSON(&f); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados invalidos: " + err.Error()})
+		errStr := err.Error()
+		if strings.Contains(errStr, "required") {
+			if strings.Contains(errStr, "ClienteID") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "É necessário selecionar um CLIENTE para abrir a nota."})
+				return
+			}
+			if strings.Contains(errStr, "Itens") || strings.Contains(errStr, "ItemID") {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "A nota deve conter pelo menos um PRODUTO com quantidade válida."})
+				return
+			}
+		}
+		
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos: Verifique se todos os campos da nota foram preenchidos."})
 		return
 	}
 

@@ -197,9 +197,10 @@ export class FaturamentoComponent implements OnInit, OnDestroy {
         this.resetForm();
         this.loadData();
       },
-      error: () => {
+      error: (err) => {
         this.isProcessing = false;
-        this.showModal('Erro', 'Falha ao abrir nota fiscal.', 'error');
+        const backendMessage = err.error?.error || 'Falha ao abrir nota fiscal.';
+        this.showModal('Erro ao Faturar', backendMessage, 'error');
       }
     });
   }

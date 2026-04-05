@@ -126,7 +126,10 @@ export class EstoqueComponent implements OnInit, OnDestroy {
         this.resetForm();
         this.loadProducts();
       },
-      error: (err) => this.showModal('Erro', 'Não foi possível salvar o produto.', 'error')
+      error: (err) => {
+        const backendMessage = err.error?.error || 'Não foi possível salvar o produto.';
+        this.showModal('Erro ao Salvar', backendMessage, 'error');
+      }
     });
   }
 
@@ -174,7 +177,10 @@ export class EstoqueComponent implements OnInit, OnDestroy {
         this.closeAdjustmentModal();
         this.loadProducts();
       },
-      error: () => this.showModal('Erro', 'Falha ao ajustar estoque.', 'error')
+      error: (err) => {
+        const backendMessage = err.error?.error || 'Falha ao ajustar estoque.';
+        this.showModal('Erro no Ajuste', backendMessage, 'error');
+      }
     });
   }
 }

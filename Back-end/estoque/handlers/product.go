@@ -37,7 +37,20 @@ func GetProducts(c *gin.Context) {
 func CreateProduct(c *gin.Context) {
 	var p models.Product
 	if err := c.ShouldBindJSON(&p); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos: " + err.Error()})
+		errStr := err.Error()
+		if strings.Contains(errStr, "required") {
+			var missing []string
+			if strings.Contains(errStr, "Descricao") { missing = append(missing, "Descrição") }
+			if strings.Contains(errStr, "Saldo") { missing = append(missing, "Saldo") }
+			if strings.Contains(errStr, "PrecoBase") { missing = append(missing, "Preço Base") }
+			
+			if len(missing) > 0 {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "Campos obrigatórios não preenchidos: " + strings.Join(missing, ", ")})
+				return
+			}
+		}
+		
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Dados inválidos: Verifique se preencheu todos os campos corretamente."})
 		return
 	}
 
